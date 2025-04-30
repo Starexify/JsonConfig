@@ -1,0 +1,20 @@
+import funkin.modding.events.ScriptEvent;
+import funkin.modding.module.ScriptedModule;
+
+class Testing2 extends ScriptedModule {
+    var configManager:JsonConfig;
+
+    var defaultConfig = {
+        test: ["test2", false]
+    };
+
+    function new() {
+        super("Testing2");
+        configManager = new JsonConfig("testing2", defaultConfig);
+    }
+
+    override function onUpdate(event:UpdateScriptEvent) {
+        if (configManager == null) return;
+        //trace(configManager.getConfigValue("test"));
+    }
+}

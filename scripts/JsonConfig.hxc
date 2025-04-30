@@ -1,0 +1,235 @@
+import funkin.modding.events.ScriptEvent;
+import funkin.modding.module.ScriptedModule;
+import funkin.util.FileUtilSandboxed;
+import funkin.util.FileWriteMode;
+import funkin.util.ReflectUtil;
+import funkin.util.SerializerUtil;
+
+class JsonConfig extends ScriptedModule {
+    public var basePath:String = "config/";
+
+    public var configID;
+    public var defaultConfig:Dynamic;
+    public var filePath;
+
+    function new(name:String, config:Dynamic) {
+        super("JsonConfig");
+        configID = name;
+        defaultConfig = config;
+        filePath = basePath + configID + ".json";
+        if (!FileUtilSandboxed.fileExists(filePath)) saveConfig(defaultConfig);
+    }
+
+    override function onUpdate(event:UpdateScriptEvent) {
+        if (!FileUtilSandboxed.fileExists(filePath)) {
+            trace("(JSON Config) Config file " + getConfigID() + ".json missing, recreating with default values.");
+            saveConfig(getDefaultConfig());
+        }
+    }
+
+    /**
+     * Saves the current configuration to disk
+     */
+    public function saveConfig(config:Dynamic) {
+        setDefaultConfig(config);
+        FileUtilSandboxed.writeStringToPath(getFilePath(), SerializerUtil.toJSON(getDefaultConfig()), FileWriteMode.Force);
+    }
+
+    /**
+     * Gets the entire configuration object.
+     *
+     * @return The complete configuration object
+     */
+    public function getConfig():Dynamic {
+        if (!FileUtilSandboxed.fileExists(getFilePath())) {
+            trace("(JSON Config) Config file " + getConfigID() + ".json missing, recreating with default values.");
+            saveConfig(getDefaultConfig());
+        }
+
+        return FileUtilSandboxed.readJSONFromPath(getFilePath());
+    }
+
+
+    /**
+     * Gets a value from your config by key.
+     *
+     * @param key The key of the value to retrieve
+     * @return The value associated with the key, or null if not found
+     */
+    public function getConfigValue(key:String):Dynamic {
+        var data = getConfig();
+        return ReflectUtil.getAnonymousField(data, key);
+    }
+
+    /**
+     * Function for updating or adding a value in your config.
+     *
+     * @param key The key of the value to update or add
+     * @param value The new value to set/add
+     */
+    public function setConfigValue(key:String, value:Dynamic) {
+        var data = getConfig();
+        ReflectUtil.setAnonymousField(data, key, value);
+        saveConfig(data);
+    }
+
+    /**
+     * Gets a value from an array in your config.
+     *
+     * @param parentKey The key of the array
+     * @param index The index of the array element to retrieve
+     * @return The value at the specified index, or null if not found
+     */
+    public function getArrayConfigValue(parentKey:String, index:Int):Dynamic {
+        var data = getConfig();
+        var parent = ReflectUtil.getAnonymousField(data, parentKey);
+
+        if (parent != null && Std.isOfType(parent, Array) && index >= 0 && index < parent.length)
+            return parent[index];
+
+        return null;
+    }
+
+    /**
+     * Function for updating or adding the value of an array element in your config.
+     *
+     * @param parentKey The key of the array to modify
+     * @param index The index of the array element to modify
+     * @param value The new value to set/add
+     */
+    public function setArrayConfigValue(parentKey:String, index:Int, value:Dynamic) {
+        var data = getConfig();
+        var parent = ReflectUtil.getAnonymousField(data, parentKey);
+
+        parent[index] = value;
+
+        saveConfig(data);
+    }
+
+    /**
+     * Gets a value from a nested object in your config.
+     *
+     * @param parentKey The key of the parent object
+     * @param childKey The key within the parent object to retrieve
+     * @return The value of the nested property, or null if not found
+     */
+    public function getNestedConfigValue(parentKey:String, childKey:String):Dynamic {
+        var data = getConfig();
+        var parent = ReflectUtil.getAnonymousField(data, parentKey);
+
+        if (parent != null) return ReflectUtil.getAnonymousField(parent, childKey);
+
+        return null;
+    }
+
+    /**
+     * Function for updating or adding a value in a nested object in your config.
+     *
+     * @param parentKey The key of the parent object
+     * @param childKey The key within the parent object to modify
+     * @param value The new value to set/add
+     */
+    public function setNestedConfigValue(parentKey:String, childKey:String, value:Dynamic) {
+        var data = getConfig();
+        var parent = ReflectUtil.getAnonymousField(data, parentKey);
+
+        if (parent != null) {
+            ReflectUtil.setAnonymousField(parent, childKey, value);
+            saveConfig(data);
+        }
+    }
+
+    /**
+     * Gets a value from deeply nested objects in your config.
+     *
+     * @param keyPath An array of strings representing the path to the target property
+     * @return The value at the specified path, or null if not found
+     */
+    public function getDeepConfigValue(keyPath:Array<String>):Dynamic {
+        var data = getConfig();
+        var current = data;
+
+        // Navigate through the path
+        for (i in 0...keyPath.length) {
+            var key = keyPath[i];
+
+            if (current == null || !ReflectUtil.hasAnonymousField(current, key))
+                return null;
+
+            current = ReflectUtil.getAnonymousField(current, key);
+        }
+
+        return current;
+    }
+
+    /**
+     * Function for updating or adding a value in deeply nested objects in your config.
+     * Creates missing objects in the path if they don't exist.
+     *
+     * @param keyPath An array of strings representing the path to the target property
+     * @param value The new value to set/add
+     */
+    public function setDeepConfigValue(keyPath:Array<String>, value:Dynamic) {
+        var data = getConfig();
+
+        var current = data;
+        var parent = null;
+        var lastKey = null;
+
+        // Navigate to the parent of the target property
+        for (i in 0...keyPath.length) {
+            var key = keyPath[i];
+
+            if (i == keyPath.length - 1) {
+                parent = current;
+                lastKey = key;
+            } else {
+                if (ReflectUtil.hasAnonymousField(current, key)) {
+                    current = ReflectUtil.getAnonymousField(current, key);
+                } else {
+                    // Create missing objects in the path
+                    var newObj = {};
+                    ReflectUtil.setAnonymousField(current, key, newObj);
+                    current = newObj;
+                }
+            }
+        }
+
+        if (parent != null && lastKey != null) {
+            ReflectUtil.setAnonymousField(parent, lastKey, value);
+            saveConfig(data);
+        }
+    }
+
+    /**
+     * Functions for getting/setting variables in your config object.
+     */
+    public function getPath() {
+        return this.basePath;
+    }
+
+    public function setFilePath(path:String) {
+        this.filePath = path + ".json";
+        saveConfig(getConfig());
+    }
+
+    public function getFilePath() {
+        return filePath;
+    }
+
+    public function getConfigID() {
+        return this.configID;
+    }
+
+    public function setConfigID(name:String) {
+        this.configID = name;
+    }
+
+    public function getDefaultConfig():Dynamic {
+        return this.defaultConfig;
+    }
+
+    public function setDefaultConfig(config:Dynamic):Dynamic {
+        this.defaultConfig = config;
+    }
+}

@@ -1,0 +1,13 @@
+{
+  "title": "JsonConfig",
+  "description": "Json Configuration Library for managing Json configurations for your mods.",
+  "contributors": [
+    {
+      "name": "ImVeryBad",
+      "role": "Developer"
+    }
+  ],
+  "api_version": "0.6.3",
+  "mod_version": "0.0.1-beta",
+  "license": "MIT"
+}
