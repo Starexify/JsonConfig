@@ -28,14 +28,6 @@ class JsonConfig extends ScriptedModule {
     }
 
     /**
-     * Saves the current configuration to disk
-     */
-    public function saveConfig(config:Dynamic) {
-        setDefaultConfig(config);
-        FileUtilSandboxed.writeStringToPath(getFilePath(), SerializerUtil.toJSON(getDefaultConfig()), FileWriteMode.Force);
-    }
-
-    /**
      * Gets the entire configuration object.
      *
      * @return The complete configuration object
@@ -49,6 +41,39 @@ class JsonConfig extends ScriptedModule {
         return FileUtilSandboxed.readJSONFromPath(getFilePath());
     }
 
+    /**
+     * Completely clears the configuration by deleting the config file.
+     *
+     * @return True if the file was successfully deleted or didn't exist, false otherwise
+     */
+    public function clearConfig() {
+        if (FileUtilSandboxed.fileExists(getFilePath())) {
+            FileUtilSandboxed.deleteFile(getFilePath());
+            trace("(JSON Config) Config file " + getConfigID() + ".json has been deleted.");
+            return true;
+        } else
+            return true;
+
+        return false;
+    }
+
+    /**
+     * Saves the current configuration to disk
+     */
+    public function saveConfig(config:Dynamic) {
+        setDefaultConfig(config);
+        FileUtilSandboxed.writeStringToPath(getFilePath(), SerializerUtil.toJSON(getDefaultConfig()), FileWriteMode.Force);
+    }
+
+    /**
+     * Resets the current configuration to its default values.
+     *
+     * @return The default configuration that was restored
+     */
+    public function resetConfig():Dynamic {
+        saveConfig(getDefaultConfig());
+        return getDefaultConfig();
+    }
 
     /**
      * Gets a value from your config by key.
